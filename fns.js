@@ -513,7 +513,7 @@ function pre_add_to_basket(id, action, place)
 function set_basket(basket)
 {
    $.get(
-		'/ajax.php',
+		'/geobazar/ajax.php',
 		{action:'set_basket', basket:basket},
 		function(data){
 			return data;
@@ -805,7 +805,7 @@ function check_favorites(obj, type, id)
 		if (is_user_auth)
 		{
 			$.get(
-				'/ajax.php',
+				'/geobazar/ajax.php',
 				{action:'set_favorite', id:id},
 				function(data){
 					if (data != 'error')
@@ -1084,7 +1084,7 @@ function get_sms_code(act)
 	if (a == 1)
 	{
 		$.getJSON(
-			'/ajax.php',
+			'/geobazar/ajax.php',
 			{action:'get_sms_code', act:act, phone_code:phone_code, phone:phone, phone_sms_code:phone_sms_code},
 			function(data){
 				var a = 1; // метка
@@ -1200,7 +1200,7 @@ function upload_data(obj)
 				fd.append('attach[]', data[key]);
 			
 			$.ajax({
-				url: '/ajax.php',
+				url: '/geobazar/ajax.php',
 				data: fd,
 				processData: false,
 				contentType: false,
@@ -1267,7 +1267,7 @@ function upload_another_pic(obj)
 			fd.append('who', id[0]);
 			
 			$.ajax({
-				url: '/ajax.php',
+				url: '/geobazar/ajax.php',
 				data: fd,
 				processData: false,
 				contentType: false,
@@ -1322,7 +1322,7 @@ function show_another_pics_recursiv(id, inner_text, list)
 	if (pic_number != 'no')
 	{
 		$.get(
-			'/ajax.php',
+			'/geobazar/ajax.php',
 			{action:'encode_pic_url', url:list[pic_number][0], width:'74', height:'111', action_pic:'cut', time:now},
 			function(data){
 				inner_text = inner_text + '<div class="another_pic_item">';
@@ -1453,7 +1453,7 @@ function show_product(id)
 		fd.append('id', id);
 		
 		$.ajax({
-			url: '/ajax.php',
+			url: '/geobazar/ajax.php',
 			data: fd,
 			processData: false,
 			contentType: false,
@@ -1521,7 +1521,7 @@ function show_city_variant()
 		country = $('#adress_country').val();
 		
 		$.getJSON(
-			'/ajax.php',
+			'/geobazar/ajax.php',
 			{action:'get_city', country:country, search:val},
 			function(data) {
 				inner_text = '';
@@ -1615,7 +1615,7 @@ function show_delivery()
 		}
 		
 		$.getJSON(
-			'/ajax.php',
+			'/geobazar/ajax.php',
 			//{action:'get_delivery', country:country, city_id:city_id, count:show_count},
 			{action:'get_cdek_variants', country:country, city_id:city_id},
 			function(data) {
@@ -1785,7 +1785,7 @@ function reset_city()
 function show_razmer(id)
 {
 	$.getJSON(
-		'/ajax.php',
+		'/geobazar/ajax.php',
 		{action:'get_product_size', id:id},
 		function(data) {
 			if (data['one'])

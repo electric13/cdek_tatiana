@@ -1,51 +1,43 @@
 <?php
+require("conf.php");
+$link = mysqli_connect($host, $user, $password, $db_name);
+mysqli_query($link, "SET NAMES utf8 COLLATE utf8_unicode_ci");
 
-    //$_GET["action"] = 'get_cdek_variants';
-    //$_GET["country"] = 'ru';
-    //$_GET["city_id"] = 195707979;
-
-    if (!isset($_GET["action"])) {
+if (!isset($_GET["action"])) {
 	die();
-    };
-    $action = htmlspecialchars(stripslashes(trim($_GET["action"])));
-    switch ($action) {
+};
+$action = htmlspecialchars(stripslashes(trim($_GET["action"])));
+
+switch ($action) {
 	case "get_city": 
 	    $c = htmlspecialchars(stripslashes(trim($_GET["country"])));
 	    $s = htmlspecialchars(stripslashes(trim($_GET["search"])));    
 	    echo json_encode(get_city($c, $s));
 	    break;
 	case "get_cdek_variants": 
-	    $c = htmlspecialchars(stripslashes(trim($_GET["country"])));
 	    $i = (int)$_GET["city_id"];
-	    echo json_encode(get_cdek_variants($c, $i));
+	    echo json_encode(get_cdek_variants($i));
 	    break;
     };
 
     die();
 
-    function get_city(string $country, string $search ) : array {
+function get_city(string $country, string $search ) : array {
+	global $link;
 	$result = [];
 	if (($country !== 'ru') && ($country !== 'by')) { return $result; }
 	if ((mb_strlen($search) < 3) || (mb_strlen($search) > 15 )) { return $result;}
-	$host = 'localhost'; //имя хоста, на локальном компьютере это localhost
-	$user = 'grabber'; //имя пользователя, по умолчанию это root
-        $password = 'grabpass'; //пароль, по умолчанию пустой
-	$db_name = 'geobazar'; //имя базы данных
-	//Соединяемся с базой данных используя наши доступы:
-	$link = mysqli_connect($host, $user, $password, $db_name);
-	mysqli_query($link, "SET NAMES utf8 COLLATE utf8_unicode_ci");
-
-	$q = "select id,pref,name,addinfo from geodata_{$country} where name like '%{$search}%'";
+	$q = "select `id`,`pref`,`name`,`addinfo` from geodata where `name` like '%{$search}%' and `ccode`='{$country}'";
 	if ($sqlres = mysqli_query($link, $q)) {
 	    while ($row  = mysqli_fetch_row($sqlres)) {$result[] = $row; }
 	} else { 
-    	    return $result;
+   	    return $result;
 	}
 	return $result;
-    }
+}
     
-    function get_cdek_variants(string $country, int $city_id): array {
-	$reciever_id = get_cdek_cityid($country, $city_id);
+function get_cdek_variants(int $city_id): array {
+	$reciever_id = get_cdek_cityid($city_id);
 	$result = [];
 	if ($reciever_id === 0) { return $result;}
 	$req = [
@@ -67,7 +59,9 @@
 		]
 	    ]
 	];
+
 	$found = post_data("https://api.edu.cdek.ru/v2/calculator/tarifflist", $req);
+
 	if (count($found) > 0) {
 	    foreach ($found["tariff_codes"] as $tariff) {
 		$dm = (int)($tariff["delivery_mode"]);
@@ -81,22 +75,19 @@
 		}
 	    }
 	}
-	
 	return $result;
-    }
+}
 
-    function get_cdek_cityid(string $country, int $city_id): int {
+function get_cdek_cityid(int $city_id): int {
 	// Возвращает код населенного пункта в системе CDEK
+	//global $host, $user, $password, $db_name;
+	global $link;
 	$result = 0;
-	if (($country !== 'ru') && ($country !== 'by')) { return $result; }
-	$host = 'localhost'; //имя хоста, на локальном компьютере это localhost
-	$user = 'grabber'; //имя пользователя, по умолчанию это root
-        $password = 'grabpass'; //пароль, по умолчанию пустой
-	$db_name = 'geobazar'; //имя базы данных
-	//Соединяемся с базой данных используя наши доступы:
-	$link = mysqli_connect($host, $user, $password, $db_name);
-	mysqli_query($link, "SET NAMES utf8 COLLATE utf8_unicode_ci");
-	if ($sqlres = mysqli_query($link, "select id,pref,name,addinfo from geodata_{$country} where id={$city_id}")) {
+	//if (($country !== 'ru') && ($country !== 'by')) { return $result; }
+	//Соединяемся с базой данных 
+	//$link = mysqli_connect($host, $user, $password, $db_name);
+	//mysqli_query($link, "SET NAMES utf8 COLLATE utf8_unicode_ci");
+	if ($sqlres = mysqli_query($link, "select id, pref, name, addinfo from geodata where id={$city_id}")) {
 	    if (! $row  = mysqli_fetch_row($sqlres)) { return $result; }
 	} else { return $result; }
 	// если пришли сюда, значит есть параметры населенного пункта
@@ -109,32 +100,68 @@
 	    return (int)$found["code"];
 	}
 	return 0;
-    }
-
+}
     
-    function get_cdek_bearer(): string {
-	return "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzY29wZSI6WyJvcmRlcjphbGwiLCJwYXltZW50OmFsbCJdLCJleHAiOjE2NDUzOTQzMzksImF1dGhvcml0aWVzIjpbInNoYXJkLWlkOnJ1LTAxIiwiZnVsbC1uYW1lOtCi0LXRgdGC0LjRgNC-0LLQsNC90LjQtSDQmNC90YLQtdCz0YDQsNGG0LjQuCDQmNCcLCDQntCR0KnQldCh0KLQktCeINChINCe0JPQoNCQ0J3QmNCn0JXQndCd0J7QmSDQntCi0JLQldCi0KHQotCS0JXQndCd0J7QodCi0KzQriIsImNvbnRyYWN0OtCY0Jwt0KDQpC3Qk9Cb0JMtMjIiLCJhY2NvdW50LWxhbmc6cnVzIiwiYXBpLXZlcnNpb246MS4xIiwiYWNjb3VudC11dWlkOmU5MjViZDBmLTA1YTYtNGM1Ni1iNzM3LTRiOTljMTRmNjY5YSIsImNsaWVudC1pZC1lYzU6ZWQ3NWVjZjQtMzBlZC00MTUzLWFmZTktZWI4MGJiNTEyZjIyIiwiY2xpZW50LWlkLWVjNDoxNDM0ODIzMSIsInNvbGlkLWFkZHJlc3M6ZmFsc2UiLCJjb250cmFnZW50LXV1aWQ6ZWQ3NWVjZjQtMzBlZC00MTUzLWFmZTktZWI4MGJiNTEyZjIyIiwiY2xpZW50LWNpdHk60J3QvtCy0L7RgdC40LHQuNGA0YHQuiwg0J3QvtCy0L7RgdC40LHQuNGA0YHQutCw0Y8g0L7QsdC7LiJdLCJqdGkiOiJkZjQ3YzUwNC1iNDE2LTQxZjUtOWRlMi05YTg0MGVkNWU5ZjAiLCJjbGllbnRfaWQiOiJFTXNjZDZyOUpuRmlRM2JMb3lqSlk2ZU03OEpySmNlSSJ9.Pa63JUihZQx8oV6pZC0GJ78J_Sd9CIQdWTaYRFwsLngkJYAFFcAl7Ja3aUziyA1xUcsAh51fthljtdEvZcnvNXTvd0KDklWgKf2QEzPrkqSNLxGhuMbn8CFVgqxWsYa6q_tw8uyvNQIytQl9wFChH-tMNQ5wgmk6fsmdX8yzstZpEQcuaRBwOet8lojJrkrIgAWcVNwaOB-3aXomz1YqZC5wajaK8ROOQY-DUj2yleq68pPnzstyaGjuFewckv0i4vV9zivP0Zs2tPfvmHIhgwwM139ZVWAvFHegXJZOmNKGwtTg7faNux0RIzb-ulIV1o6Xhma7aFPl9tRUw6iPDQ";
-    }
+function get_cdek_bearer(): string {
+	global $link;
+	if ($sqlres = mysqli_query($link, "select conf.value as client_id,
+											  conf2.value as client_password, 
+											  conf3.value as bearer, 
+											  conf4.value as valid_until 
+										from `e13_config` as conf 
+										join `e13_config` as conf2 on conf2.id=2
+										join `e13_config` as conf3  on conf3.id=3
+										join `e13_config` as conf4  on conf4.id=4
+										WHERE conf.id=1")) {
+	    if (! $row  = mysqli_fetch_row($sqlres)) { return "Error BD"; }
+		// Если пришли сюда, значит есть результат чтения из БД
+		$valid_until = (int)$row[3];
+		if ( time() < $valid_until ) {
+			// Токен еще не протух, возвращаем его
+			return $row[2];
+		} else {
+			// Нужно запросить новый токен 
+			$post_data = ['grant_type' => 'client_credentials',
+						 'client_id' => 'EMscd6r9JnFiQ3bLoyjJY6eM78JrJceI',
+						 'client_secret' => 'PjLZkKBHEiLK3YsjtNrt3TGNG0ahs3kG'];
+			// и записать его в базу
+			$new_bearer = post_data("https://api.edu.cdek.ru/v2/oauth/token?parameters", $post_data);
+			if (! isset($new_bearer["access_token"])) {
+				return "error reading token";
+			} else { 
+				$bearer = $new_bearer["access_token"];
+				$valid_until = time() + (int)$new_bearer["expires_in"];
+				mysqli_query($link, "update `e13_config` set `value` = '{$bearer}' where id = 3;");
+				mysqli_query($link, "update `e13_config` set `value` = '{$valid_until}' where id = 4;");
+				return $bearer;
+			}
+		}
+	}
+	return "error unknown"; 
+}
     
-    function post_data(string $url, array $data) {
-    	$data_string = json_encode($data);                                                                                   
-        $ch = curl_init();
+function post_data(string $url, array $data) {
+    $ch = curl_init();
+	if ($url !== "https://api.edu.cdek.ru/v2/oauth/token?parameters") { 
+		$hdr = ['Content-Type: application/json'];
+		$hdr[] = 'Authorization: Bearer '.get_cdek_bearer(); 
+		$data_string = json_encode($data);                                                                                   
+	} else {
+		$hdr = ['Content-Type: application/x-www-form-urlencoded'];
+		$data_string = http_build_query($data);
+	}
 	curl_setopt($ch, CURLOPT_URL, $url);
 	curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-	curl_setopt($ch, CURLOPT_HTTPHEADER, array(
-	                                    'Content-Type: application/json',
-	                                    'Authorization: Bearer '.get_cdek_bearer()) 
-	                                    );
+	curl_setopt($ch, CURLOPT_HTTPHEADER, $hdr);
 	curl_setopt($ch, CURLOPT_POST, 1);
 	curl_setopt($ch, CURLOPT_POSTFIELDS, $data_string);
-		
 	$result = curl_exec($ch);
 	curl_close($ch); 
 	return json_decode($result, true);
-    }
+}
 
-    function get_data(string $url) {
-        $ch = curl_init();
+function get_data(string $url) {
+    $ch = curl_init();
 	curl_setopt($ch, CURLOPT_URL, $url);
 	curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
 	curl_setopt($ch, CURLOPT_HTTPHEADER, array(
@@ -144,7 +171,4 @@
 	$result = curl_exec($ch);
 	curl_close($ch); 
 	return json_decode($result, true);
-    }
-
-
-?>
+}?>
